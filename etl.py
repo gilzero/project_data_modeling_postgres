@@ -2,42 +2,58 @@ import os
 import glob
 import psycopg2
 import pandas as pd
+from datetime import datetime
 from sql_queries import *
 
 
 def process_song_file(cur, filepath):
     # open song file
-    df =
+
+    df = pd.read_json(filepath, lines=True)
 
     # insert song record
-    song_data =
+    song_data = df[['song_id', 'title', 'artist_id', 'year', 'duration']]
+    song_data = tuple(song_data.values[0])
     cur.execute(song_table_insert, song_data)
 
     # insert artist record
-    artist_data =
+    artist_data = df[['artist_id', 'artist_name', 'artist_location', 'artist_latitude', 'artist_longitude']]
+    artist_data = tuple(artist_data.values[0])
     cur.execute(artist_table_insert, artist_data)
 
 
 def process_log_file(cur, filepath):
+
     # open log file
-    df =
+    df = pd.read_json(filepath, lines=True)
 
     # filter by NextSong action
-    df =
+    df = df[df['page'] == 'NextSong']
 
     # convert timestamp column to datetime
-    t =
+    # t =
 
     # insert time data records
-    time_data =
-    column_labels =
-    time_df =
+    # time_data =
+    # column_labels = ['start_time', 'hour', 'day', 'week', 'month', 'year', 'weekday']
+
+    df['datetime'] = df['ts'].apply(lambda x: datetime.utcfromtimestamp(x / 1000))
+
+    # start_time, hour, day, week, month, year, weekday
+
+    time_df = df[['ts', 'datetime']]
+    time_df['hour'] = time_df['datetime'].apply(lambda x: x.hour)
+    time_df['day'] = time_df['datetime'].apply(lambda x: x.day)
+    time_df['week'] = time_df['datetime'].apply(lambda x: x.week)
+    time_df['month'] = time_df['datetime'].apply(lambda x: x.month)
+    time_df['year'] = time_df['datetime'].apply(lambda x: x.year)
+    time_df['weekday'] = time_df['datetime'].apply(lambda x: x.weekday())
 
     for i, row in time_df.iterrows():
         cur.execute(time_table_insert, list(row))
 
     # load user table
-    user_df =
+    user_df = df[['userId', 'firstName', 'lastName', 'gender', 'level']]
 
     # insert user records
     for i, row in user_df.iterrows():

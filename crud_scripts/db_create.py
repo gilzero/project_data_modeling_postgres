@@ -17,3 +17,17 @@ cnx = psycopg2.connect(user=username, password=password, host=server,
 print('connected')
 
 
+"""
+
+CREATE TABLE public.product
+(
+    price numeric NOT NULL,
+    name character(50) NOT NULL,
+    id serial NOT NULL,
+    created date NOT NULL,
+    PRIMARY KEY (id)
+);
+
+
+
+"""
