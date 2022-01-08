@@ -1,5 +1,8 @@
 # Project Description
 
+Project Github address:
+https://github.com/gilzero/project_data_modeling_postgres
+
 Data modeling with Postgres and build an ETL pipeline using Python. 
 Define fact and dimension tables for a star schema for a analytic focus, 
 ETL pipeline that transfers data from files in two local directories into these tables in Postgres using Python and SQL.
