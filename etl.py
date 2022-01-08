@@ -16,8 +16,13 @@ pd.options.mode.chained_assignment = None
 
 
 def process_song_file(cur, filepath):
+    """
+    Process song data file, insert song record and artist record
+    :param cur: cursor of connection
+    :param filepath: data file path
+    :return: n/a
+    """
     # open song file
-
     df = pd.read_json(filepath, lines=True)
 
     # insert song record
@@ -32,6 +37,12 @@ def process_song_file(cur, filepath):
 
 
 def process_log_file(cur, filepath):
+    """
+    Process event log files
+    :param cur: cursor of connection
+    :param filepath: data file path
+    :return: n/a
+    """
     # open log file
     df = pd.read_json(filepath, lines=True)
 
@@ -51,16 +62,17 @@ def process_log_file(cur, filepath):
     df_time['weekday'] = df_time['datetime'].apply(lambda x: x.weekday())
 
     # time data and convert to python native numeric format.
-
     time_data = df_time[['ts', 'hour', 'day', 'week', 'month', 'year', 'weekday']].values
     time_data = [(int(x[0]), int(x[1]), int(x[2]), int(x[3]), int(x[4]), int(x[5]), int(x[6])) for x in time_data]
 
+    # insert each rows of data
     for row in time_data:
         cur.execute(time_table_insert, row)
 
     # load user table
     user_df = df[['userId', 'firstName', 'lastName', 'gender', 'level']]
 
+    # get user data transformed and ready.
     user_data = user_df.drop_duplicates('userId', keep='last')
     user_data = user_data.set_index('userId')
     user_data = user_data.to_records()
@@ -119,6 +131,10 @@ def process_data(cur, conn, filepath, func):
 
 
 def main():
+    """
+    Execution of functions.Process song data and event log data.
+    :return: n/a
+    """
     conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
     cur = conn.cursor()
 
