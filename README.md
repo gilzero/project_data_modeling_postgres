@@ -31,7 +31,24 @@ ALTER ROLE student CREATEDB;
 
 
 
+
+
+if session in use, quick way to resolve:
+make sure disconnect pgadmin connection,
+via pgadmin, right click a db to disconnect
+
+psycopg2.errors.ObjectInUse: database "sparkifydb" is being accessed by other users
+DETAIL:  There is 1 other session using the database.
+
+$ brew services restart postgresql
+
+
+
+
+
+
 ### libraries
 
 pip install ipython-sql
+
 

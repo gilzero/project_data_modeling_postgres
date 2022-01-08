@@ -4,6 +4,15 @@ import psycopg2
 import pandas as pd
 from datetime import datetime
 from sql_queries import *
+import numpy as np
+from psycopg2.extensions import register_adapter, AsIs
+
+psycopg2.extensions.register_adapter(np.int64, psycopg2._psycopg.AsIs)
+# psycopg2: can't adapt type 'numpy.int64' error fix:
+# https://stackoverflow.com/questions/50626058/psycopg2-cant-adapt-type-numpy-int64
+
+# Suppress SettingWithCopyWarning in Pandas
+pd.options.mode.chained_assignment = None
 
 
 def process_song_file(cur, filepath):
@@ -16,14 +25,13 @@ def process_song_file(cur, filepath):
     song_data = tuple(song_data.values[0])
     cur.execute(song_table_insert, song_data)
 
-    # insert artist record
+    # # insert artist record
     artist_data = df[['artist_id', 'artist_name', 'artist_location', 'artist_latitude', 'artist_longitude']]
     artist_data = tuple(artist_data.values[0])
     cur.execute(artist_table_insert, artist_data)
 
 
 def process_log_file(cur, filepath):
-
     # open log file
     df = pd.read_json(filepath, lines=True)
 
@@ -31,48 +39,63 @@ def process_log_file(cur, filepath):
     df = df[df['page'] == 'NextSong']
 
     # convert timestamp column to datetime
-    # t =
-
-    # insert time data records
-    # time_data =
-    # column_labels = ['start_time', 'hour', 'day', 'week', 'month', 'year', 'weekday']
-
     df['datetime'] = df['ts'].apply(lambda x: datetime.utcfromtimestamp(x / 1000))
 
     # start_time, hour, day, week, month, year, weekday
+    df_time = df[['ts', 'datetime']]
+    df_time['hour'] = df_time['datetime'].apply(lambda x: x.hour)
+    df_time['day'] = df_time['datetime'].apply(lambda x: x.day)
+    df_time['week'] = df_time['datetime'].apply(lambda x: x.week)
+    df_time['month'] = df_time['datetime'].apply(lambda x: x.month)
+    df_time['year'] = df_time['datetime'].apply(lambda x: x.year)
+    df_time['weekday'] = df_time['datetime'].apply(lambda x: x.weekday())
 
-    time_df = df[['ts', 'datetime']]
-    time_df['hour'] = time_df['datetime'].apply(lambda x: x.hour)
-    time_df['day'] = time_df['datetime'].apply(lambda x: x.day)
-    time_df['week'] = time_df['datetime'].apply(lambda x: x.week)
-    time_df['month'] = time_df['datetime'].apply(lambda x: x.month)
-    time_df['year'] = time_df['datetime'].apply(lambda x: x.year)
-    time_df['weekday'] = time_df['datetime'].apply(lambda x: x.weekday())
+    # time data and convert to python native numeric format.
 
-    for i, row in time_df.iterrows():
-        cur.execute(time_table_insert, list(row))
+    time_data = df_time[['ts', 'hour', 'day', 'week', 'month', 'year', 'weekday']].values
+    time_data = [(int(x[0]), int(x[1]), int(x[2]), int(x[3]), int(x[4]), int(x[5]), int(x[6])) for x in time_data]
+
+    for row in time_data:
+        cur.execute(time_table_insert, row)
 
     # load user table
     user_df = df[['userId', 'firstName', 'lastName', 'gender', 'level']]
 
+    user_data = user_df.drop_duplicates('userId', keep='last')
+    user_data = user_data.set_index('userId')
+    user_data = user_data.to_records()
+    user_data = list(user_data)
+
     # insert user records
-    for i, row in user_df.iterrows():
+    for row in user_data:
         cur.execute(user_table_insert, row)
 
     # insert songplay records
     for index, row in df.iterrows():
 
+        # songplay_id = None. auto increment by db
+        start_time = row.ts
+        user_id = row.userId
+        level = row.level
+        song_title = row.song
+        artist_name = row.artist
+        session_id = row.sessionId
+        location = row.location
+        user_agent = row.userAgent
+
+        params = (song_title, artist_name)
+
         # get songid and artistid from song and artist tables
-        cur.execute(song_select, (row.song, row.artist, row.length))
+        cur.execute(song_select, params)
         results = cur.fetchone()
 
         if results:
-            songid, artistid = results
+            song_id, artist_id = results
         else:
-            songid, artistid = None, None
+            song_id, artist_id = None, None
 
         # insert songplay record
-        songplay_data =
+        songplay_data = (start_time, user_id, level, song_id, artist_id, session_id, location, user_agent)
         cur.execute(songplay_table_insert, songplay_data)
 
 

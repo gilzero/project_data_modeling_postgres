@@ -61,9 +61,9 @@ def main():
     cur, conn = create_database()
 
     drop_tables(cur, conn)
+    print("Tables Dropped if exists.")
     create_tables(cur, conn)
-
-    print("Tables Created.")
+    print("Tables All Created.")
 
     conn.close()
 
