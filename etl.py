@@ -50,24 +50,24 @@ def process_log_file(cur, filepath):
     df = df[df['page'] == 'NextSong']
 
     # convert timestamp column to datetime
-    df['datetime'] = df['ts'].apply(lambda x: datetime.utcfromtimestamp(x / 1000))
+    t = pd.to_datetime(df['ts'], unit='ms')
 
     # start_time, hour, day, week, month, year, weekday
-    df_time = df[['ts', 'datetime']]
-    df_time['hour'] = df_time['datetime'].apply(lambda x: x.hour)
-    df_time['day'] = df_time['datetime'].apply(lambda x: x.day)
-    df_time['week'] = df_time['datetime'].apply(lambda x: x.week)
-    df_time['month'] = df_time['datetime'].apply(lambda x: x.month)
-    df_time['year'] = df_time['datetime'].apply(lambda x: x.year)
-    df_time['weekday'] = df_time['datetime'].apply(lambda x: x.weekday())
+    time_df = pd.DataFrame({
+        'ts': t,
+        'hour': t.dt.hour,
+        'day': t.dt.day,
+        'week': t.dt.isocalendar().week,
+        'month': t.dt.month,
+        'year': t.dt.year,
+        'weekday': t.dt.weekday
 
-    # time data and convert to python native numeric format.
-    time_data = df_time[['ts', 'hour', 'day', 'week', 'month', 'year', 'weekday']].values
-    time_data = [(int(x[0]), int(x[1]), int(x[2]), int(x[3]), int(x[4]), int(x[5]), int(x[6])) for x in time_data]
+    })
 
-    # insert each rows of data
-    for row in time_data:
-        cur.execute(time_table_insert, row)
+
+    # insert time records
+    for _, row in time_df.iterrows():
+        cur.execute(time_table_insert, tuple(row))
 
     # load user table
     user_df = df[['userId', 'firstName', 'lastName', 'gender', 'level']]
@@ -85,8 +85,7 @@ def process_log_file(cur, filepath):
     # insert songplay records
     for index, row in df.iterrows():
 
-        # songplay_id = None. auto increment by db
-        start_time = row.ts
+        start_time = pd.to_datetime(row.ts, unit='ms')  # typecast to timestamp
         user_id = row.userId
         level = row.level
         song_title = row.song
@@ -94,12 +93,15 @@ def process_log_file(cur, filepath):
         session_id = row.sessionId
         location = row.location
         user_agent = row.userAgent
+        duration = row.length
 
-        params = (song_title, artist_name)
+        # parameters data from select song id and artist id
+        params = (song_title, artist_name, duration)
 
         # get songid and artistid from song and artist tables
         cur.execute(song_select, params)
         results = cur.fetchone()
+        # print(f"results: {results}")
 
         if results:
             song_id, artist_id = results
